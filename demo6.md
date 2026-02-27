@@ -35,8 +35,13 @@ Vector:    Unauthenticated HTTP POST
 <!-- speaker_note: This affected server side components specifically, so Next v15 & v16, any versions that use Next's app router -->
 
 <!-- speaker_note: CVSS 10.0 - maximum possible severity -->
-<!-- speaker_note: One POST request and you have full RCE, so you can set up permanence, access files, reports of crypto miners being installed, etc-->
+<!-- speaker_note: One POST request and you have full RCE, so you can set up permanence, access files, reports of crypto miners being installed, state sponsored attacks, etc-->
 
+<!-- speaker_note: Within React's Core, vulnerable by default, trivial to exploit, massive number of targets -->
+- Within React's Core
+- Vulnerable by default
+- Trivial to exploit
+- Massive number of targets
 <!-- pause -->
 
 ---
@@ -71,7 +76,7 @@ Context of how it works     →     Run the exploit locally
 <!-- new_line -->
 Javascript Tricks
 === 
-<!-- speaker_note: To understand the exploit, we need to understand a couple of JavaScript tricks that the exploit relies on - thenables and constructor chaining -->
+<!-- speaker_note: To understand the exploit, we need to understand a couple of JavaScript tricks that the exploit relies on - I think these are pretty niche behaviours so bonus for anyone who knew these already -->
 <!-- end_slide -->
 
 Javascript Trick #1: Thenables
@@ -132,9 +137,9 @@ JS Trick #2: Constructor chaining
 ## Every object leads to `Function`
 
 Every JavaScript object has a `.constructor` property - the class that created it.
-Every class is a function, so its `.constructor` is `Function`.
+Every class is technically a function, so its `.constructor` is `Function`.
 
-<!-- speaker_note: Second primitive - every object's .constructor points to its class; every class's .constructor is Function -->
+<!-- speaker_note: Second Trick - every object's .constructor points to the function that created it; classes are objects in JS, and their .constructor is the Function constructor. -->
 
 <!-- pause -->
 
@@ -154,7 +159,7 @@ console.log(obj.constructor.constructor === Function);
 
 <!-- snippet_output: constructor_chain -->
 
-<!-- speaker_note: Flight decoder does unchecked prototype traversal - attacker reaches Function from any chunk object -->
+<!-- speaker_note: Since any class can get us to the function constructor, two hops from any object also gets us there. -->
 
 <!-- pause -->
 
@@ -332,7 +337,7 @@ Runs on **any route**, before auth, middleware, or action ID validation.
 The Gadget Chain: Explained
 ===
 
-## Payload Steps 1 & 2 - Thenable + initialization
+## Payload Parts 1 & 2 - Thenable + initialization
 
 `"then": "$1:__proto__:then"` - steals `Chunk.prototype.then`
 
@@ -379,7 +384,7 @@ Here it's attacker-controlled.
 The Gadget Chain: Explained cont.
 ===
 
-## Payload Steps 3
+## Payload Parts 3 & 4 - Inject function constructor + trigger execution
 
 `"_formData": { "get": "$1:constructor:constructor" }` replaces `.get` with `Function`:
 
@@ -564,6 +569,15 @@ Summary
 <!-- speaker_note: For remediation - upgrade to the patched versions, or as a temporary mitigation, block __proto__ and constructor:constructor in POST bodies with a firewall rule -->
 <!-- speaker_note: Thanks for listening to my demo, I have this presentation script including sources on a public repo if anyone is interested.
 -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- pause -->
+https://github.com/colefoster/R2S
 <!-- comment:
   Sources:
   - https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182
