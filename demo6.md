@@ -27,20 +27,20 @@ Affects:   react-server-dom-webpack,           19.0, 19.1.0, 19.1.1, 19.2.0
 
            Next.js                             16.0.0 – 16.0.6
 
-Vector:    Unauthenticated HTTP POST
 CVSS:      10.0 - Critical
 Impact:    Full server-side code execution
+Vector:    Unauthenticated HTTP POST
 ```
 <!-- alignment: center -->
+<!-- speaker_note: This affected server side components specifically, so Next v15 & v16, any versions that use Next's app router -->
 
 <!-- speaker_note: CVSS 10.0 - maximum possible severity -->
-<!-- speaker_note: Scope - any Next.js App Router app - the default since Next.js 13, no server actions required -->
-<!-- speaker_note: One POST request and you have full RCE, so you can set up permanence, access files, people were running crypto miners -->
+<!-- speaker_note: One POST request and you have full RCE, so you can set up permanence, access files, reports of crypto miners being installed, etc-->
 
 <!-- pause -->
 
 ---
-
+<!-- speaker_note: In this presentation, I'm going to try to give enough details, to understand whats happening behind the scenes, and then I'll do a quick demo -->
 This Presentation:
 
 <!-- new_line -->
@@ -69,11 +69,12 @@ Context of how it works     →     Run the exploit locally
 <!-- new_line -->
 <!-- new_line -->
 <!-- new_line -->
-# Tricks
-
+Javascript Tricks
+=== 
+<!-- speaker_note: To understand the exploit, we need to understand a couple of JavaScript tricks that the exploit relies on - thenables and constructor chaining -->
 <!-- end_slide -->
 
-JS Trick #1: Thenables
+Javascript Trick #1: Thenables
 ===
 
 ## Duck-typed Promises
@@ -432,7 +433,7 @@ A completely default Next.js app. No custom code, no server actions defined.
 
 The App Router enables Server Components by default.
 
-<!-- speaker_note: App Router enabled by default - that's all the exploit needs -->
+<!-- speaker_note: Using the last unpatched next version, App Router enabled by default - that's all the exploit needs -->
 <!-- speaker_note: npm run dev, listening on port 3000 -->
 
 <!-- pause -->
@@ -499,8 +500,29 @@ Symbols can't exist in JSON - fake chunks can never provide a fake `_response`.
 
 <!-- pause -->
 
-Any single fix breaks the chain. The patch applied both.
+![image:width:100%](commit.png)
 
+<!-- end_slide -->
+
+Patching the Demo
+===
+
+Let's see the patch in action - we'll update our demo and see the exploit fail.
+
+<!-- speaker_note: Let's patch our demo app with the newest Next.js 16.0.7 patch -->
+
+```bash +exec
+echo "npm install next@latest react@latest react-dom@latest" | pbcopy
+```
+
+<!-- pause -->
+
+---
+```bash +exec
+hurl exploit.hurl 2>&1
+```
+
+<!-- speaker_note: Same POST, but now it fails  -->
 
 <!-- end_slide -->
 
@@ -529,6 +551,8 @@ Summary
 <!-- new_line -->
 - **The exploit** - two multipart fields, no auth, runs before action ID validation; we saw it execute `whoami` on a stock Next.js app
 
+<!-- speaker_note: Lastly we say the result, using our payload against a stock Next app, executing our RCE -->
+
 <!-- pause -->
 
 <!-- new_line -->
@@ -537,7 +561,9 @@ Summary
 
 - Upgrade to **Next.js ≥ 16.0.7** / **React ≥ 19.0.1, 19.1.2, 19.2.1**
 - WAF: block `__proto__` and `constructor:constructor` in POST bodies
-
+<!-- speaker_note: For remediation - upgrade to the patched versions, or as a temporary mitigation, block __proto__ and constructor:constructor in POST bodies with a firewall rule -->
+<!-- speaker_note: Thanks for listening to my demo, I have this presentation script including sources on a public repo if anyone is interested.
+-->
 <!-- comment:
   Sources:
   - https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182
