@@ -320,14 +320,7 @@ cat exploit.hurl
 hurl exploit.hurl 2>&1
 ```
 
-<!-- pause -->
-
-```bash +exec
-docker exec react2shell-app cat /tmp/pwned.txt 2>&1 || echo "(adjust container name)"
-```
-
 ---
-
 The Patch
 ===
 
